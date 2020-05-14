@@ -1,0 +1,13 @@
+{
+    "name": "RecipeRandomizer",
+    "version": "0.1.0",
+    "title": "Recipe Randomizer",
+    "author": "Wolfs_Hollow",
+    "contact": "",
+    "homepage": "",
+    "factorio_version": "0.18",
+    "dependencies": [
+        "base >= 0.18"
+    ],
+    "description": "This mod will randomize all recipes for items."
+}
