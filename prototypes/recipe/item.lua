@@ -23,18 +23,18 @@ function tierDecider(ingredient) --determine what the ingredient tier is in
         for _dummy,item in pairs(tier) do
             if ingredient == item then
                 log('found '..item)
-                tier_name = tier
-                return tier_name
+                tierD_name = tier
+                return tierD_name
             end
         end
     end
 end  
      
-function tierRan(tier_name) --take the tier, return a random item; randomize number
+function tierRan(tierD_name) --take the tier, return a random item; randomize number
     --ran_item_number = game.create_random_generator()
     --ran_item_number(1, table_size(tier_name))
-    ran_item_number = math.random(1, table_size(tier_name))
-    return tier_name[ran_item_number]
+    ran_item_number = math.random(1, table_size(tierD_name))
+    return tierD_name[ran_item_number]
 end
 
 function tierChange(name, ingredient_table) -- takes ingredients, changes it to another ingredient on the same 'tier', and randomizes number
@@ -43,7 +43,7 @@ function tierChange(name, ingredient_table) -- takes ingredients, changes it to 
         log('ingredient: '..serpent.block(tierChange_ingredient))
         tier_name = tierDecider(tierChange_ingredient[1])
         --log('ingredient tier found')
-        --log('the ingredient is in '..serpent.dump(tier_name))
+        --log('the ingredient is in '..serpent.block(tier_name))
         new_ingredient = tierRan(tier_name)
         log('the new ingredient is '..new_ingredient)
         tierChange_ingredient[1] = new_ingredient 
@@ -60,6 +60,8 @@ function tierChange(name, ingredient_table) -- takes ingredients, changes it to 
     end
 end
 
+
+
 for item_name, content in pairs(data.raw.recipe) do   
     if content.ingredients == nil then
         checked_table = content.normal.ingredients
@@ -72,7 +74,6 @@ for item_name, content in pairs(data.raw.recipe) do
     else
     end
 end
-
 
 ---- current issue
 --- when going to ingredient table, some recipes are written {type=x, name=x, amount=x}, majority are written {name, amount}. Attempt to use ingredent.name instead of ingredient[1].
