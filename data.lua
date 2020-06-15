@@ -1,4 +1,4 @@
 --data.lua
 
-require("prototypes.recipe.item")
+ require("prototypes.recipe.item")
 
