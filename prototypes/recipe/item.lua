@@ -1,12 +1,10 @@
 --item.lua
 
+--randomize
+require('randomlua')
+generator = mwc(settings.startup["randomizer-seed"].value)
+
 -- Separated items into tiers to keep progression similar
--- tierOne = early game items such as raw materials, 1 item intermediates
--- tierTwo = red/green science items
--- tierThree = oil products/blue science
--- tierFour = purple/yellow science
--- Fluid in own category, barrels same
--- 4,5,6,notused,etc. idk what's up with that
 
 -- main purpose: iterate through all items in game, isolate ingredients, change them.
 
@@ -29,7 +27,6 @@
 
 
 --__DebugAdapter.breakpoint()
-
 
 crudeOilValue = 10
 heavyOilValue = 3
@@ -145,8 +142,7 @@ local tierOil = {
     {'chemical-plant', 705},
     {'concrete', 190}, 
     {'electric-engine-unit', (200 + (lubricantValue*15))},  
-    {'oil-refinery', 2000}, 
-    {'plastic-bar', plasticBarValue}, 
+    {'oil-refinery', 2000},     
     {'pumpjack', 850}, 
     {'solar-panel', 1015},
     {'storage-tank', 595},
@@ -180,6 +176,7 @@ local tierFluidBarrel = {
 
 local tierBlueScience = {
     {'modular-armor', ((30*redCircuitValue)+3505)},
+    {'plastic-bar', plasticBarValue}, 
     {'night-vision-equipment', ((5*redCircuitValue)+705)},
     {'defender-capsule', 734}, 
     {'slowdown-capsule', 275},
@@ -275,8 +272,10 @@ local tierEndGame = {
 
 local tierNotUsed = {{'loader', 820},{'fast-loader', 00},{'coin', 00},{'computer', 00},{'heat-interface', 00}, {'player-port', 00},{'small-plane', 00}, {'railgun', 00}, {'railgun-dart', 00}, {'raw-fish', 00}, {'used-up-uranium-fuel-cell', 00}, {'express-loader', 00}, {'electric-energy-interface', 00}}
 
+local fluidProcessing = {{'basic-oil-processing', 00}, {'advanced-oil-processing', 00}, {'coal-liquefaction', 00}, {'heavy-oil-cracking', 00}, {'light-oil-cracking', 00}, {'solid-fuel-from-light-oil', 00},{'solid-fuel-from-petroleum-gas', 00}, {'solid-fuel-from-heavy-oil', 00}}
+
 -- List of all tiers that the functions will iterate through
-local tierList = {tierNotFinite, tierRawPlates, tierRedScience, tierGreenScience, tierOil, tierFluid, tierFluidBarrel, tierBlueScience, tierNuclear, tierLateGame, tierEndGame, tierNotUsed}
+local tierList = {tierNotFinite, tierRawPlates, tierRedScience, tierGreenScience, tierOil, tierFluid, tierFluidBarrel, tierBlueScience, tierNuclear, tierLateGame, tierEndGame}
 
 function tierDecider(ingredient) --determine what the ingredient tier is in, output that full tier table
     for _dummy,tier in pairs(tierList) do
@@ -293,8 +292,10 @@ end
 function tierRan(tierD_name, value) --take the tier, return a random item; randomize number
     --ran_item_number = game.create_random_generator()
     --ran_item_number(1, table_size(tier_name))
+  
+    ran_item_number = generator:random(1,table_size(tierD_name))
+    --log(ran_item_number)
 
-    ran_item_number = math.random(1, table_size(tierD_name))
     --ran_item_number = math.random(1, #tierD_name)
     
     local new_ran_ingredient = tierD_name[ran_item_number][1]
@@ -302,8 +303,9 @@ function tierRan(tierD_name, value) --take the tier, return a random item; rando
     local new_ran_ingredient_amount = math.floor((value*1.1)/new_ran_ingredient_value) 
     local count = 0
 
-    while new_ran_ingredient_amount == 0 do
-        ran_item_number = math.random(1, table_size(tierD_name))
+    while new_ran_ingredient_amount == 0 or new_ran_ingredient == current_item_name do
+        --ran_item_number = math.random(1, table_size(tierD_name))
+        ran_item_number = generator:random(1, table_size(tierD_name))
         new_ran_ingredient = tierD_name[ran_item_number][1]
         new_ran_ingredient_value = tierD_name[ran_item_number][2]
         new_ran_ingredient_amount = math.floor((value*1.1)/new_ran_ingredient_value)
@@ -311,7 +313,7 @@ function tierRan(tierD_name, value) --take the tier, return a random item; rando
         if count > 25 then
             log("*****************************************************************************")
             log("*****************************************************************************") 
-            log("*****************************************************************************")             
+            log("**************************************************************************")             
             return nil, nil, nil
             --error()
         end
@@ -325,9 +327,9 @@ function tierRan(tierD_name, value) --take the tier, return a random item; rando
         -- goes through ingredient table and rerandoms number/item if duplicate
         for _dummy, ran_ingredient in pairs(full_ingredient_table) do 
             -- consider changing while loop
-            while ran_ingredient[1] == new_ran_ingredient or new_ran_ingredient == 'wood' or current_item_name == new_ran_ingredient do
+            while ran_ingredient.name == new_ran_ingredient or new_ran_ingredient == 'wood' or current_item_name == new_ran_ingredient or ran_ingredient[1] == new_ran_ingredient do
                 --log('the ingredient already exists on the table')
-                ran_item_number = math.random(1, table_size(tierD_name))
+                ran_item_number = generator:random(1,table_size(tierD_name))
                 new_ran_ingredient = tierD_name[ran_item_number][1]
                 new_ran_ingredient_value = tierD_name[ran_item_number][2]
                 n = 0
@@ -347,16 +349,31 @@ function retrieveValue(_name) -- retrieve the value of the original item recipe
             end
         end    
     end
-    log('Did not find '.._name..' in list')
+    return nil
 end
 
 function tierChange(_name, ingredient_table) -- takes ingredients, changes it to another ingredient on the same 'tier', and randomizes number
     full_ingredient_table = {}
     tableSize = table_size(ingredient_table)
-    original_item_value = retrieveValue(_name) -- initialize variable for OG value
+    value_check = retrieveValue(_name)
+    
+    -- checks to see if there is a returned value, if not, then the item wasn't on the list, which
+    -- means that it is not a vanilla item. We want to skip it. We do this here because it's
+    -- the first function to iterate through all the items in the tier lists.
+    if value_check then
+        original_item_value = retrieveValue(_name)*current_item_result_count -- initialize variable for OG value
+    else 
+        skipping_value = true
+        return
+    end
+         
     target_value = original_item_value / tableSize
     new_item_value = 0
-            
+ 
+    if current_item_name == 'copper-cable' then
+        --__DebugAdapter.breakpoint()
+    end
+
     for _dummy, tierChange_ingredient in pairs(ingredient_table) do
         --log('item name: '.._name)
         --log('ingredient: '..serpent.block(tierChange_ingredient))
@@ -395,10 +412,15 @@ function tierChange(_name, ingredient_table) -- takes ingredients, changes it to
             end
         end        
     end
+   
     --log(serpent.block(full_ingredient_table))
     --log('OG value '..tostring(original_item_value))
     --log('new value '..tostring(new_item_value))
     
+    if current_item_name == 'copper-cable' then
+        --__DebugAdapter.breakpoint()
+    end
+
     return full_ingredient_table   
 end
 
@@ -409,7 +431,17 @@ for item_name, content in pairs(data.raw.recipe) do --goes through and checks fo
     log('item name: '..content.name)
     changed = false
     current_item_name = content.name
-   
+    current_item_result_count = content.result_count
+    skipping_value = false
+
+    if not current_item_result_count then
+        if content.results then
+            current_item_result_count = content.results[1].amount
+        else
+            current_item_result_count = 1
+        end
+    end  
+
     -- check to make sure it is not the second time seeing the name
     if first_item_name == nil then
         first_item_name = content.name
@@ -425,17 +457,39 @@ for item_name, content in pairs(data.raw.recipe) do --goes through and checks fo
         end
     end
 
-    if content.name ~= nil then -- checks to see if there is a normal/expensive ingredient and uses that if available. otherwise uses normal table
-        if content.ingredients == nil then
+    -- check to make sure it is not in tierNotUsed so we can skip it
+    for _, item in pairs(fluidProcessing) do
+        if item[1] == current_item_name then
+            goto ending
+            --**********want to move on to next loop iteration instead, GOTO?!!??!?!?!??!?!
+        end
+    end
+
+    if content.name then -- checks to see if there is a normal/expensive ingredient and uses that if available. otherwise uses normal table
+        if not content.ingredients then
             checked_table = content.normal.ingredients
             ingredient_table_check = false
         else
             checked_table = content.ingredients
             ingredient_table_check = true
         end
-        if content.category == nil or content.category == 'crafting' then -- checks category to make sure it's not wonky
+
+        -- check for weird fluid setup, convert to useable info for mod (i.e. remove 'amount=',  etc.)
+        for _, entry in pairs(checked_table) do
+            if entry.amount ~= nil then
+                entry = {entry.name, entry.amount}
+            end
+        end
+
+        if content.category == nil or content.category == 'crafting' or content.category == 'crafting-with-fluid'or content.category == 'chemistry' or content.category == 'oil-processing' then -- checks category to make sure it's not wonky
         --content.ingredients = tierChange(content.name, checked_table)
             full_ingredient_table = tierChange(content.name, checked_table)
+            
+            --check skipping_value to see if it's true, if so then the item is not vanilla, skip it.
+            if skipping_value then
+                goto ending
+            end
+            
             if ingredient_table_check == true then
                 content.ingredients = full_ingredient_table
                 changed = true
@@ -451,9 +505,9 @@ for item_name, content in pairs(data.raw.recipe) do --goes through and checks fo
     end
     log('Recipe changed? '..tostring(changed))
     data:extend{content}
-    ::ending::
+    ::ending::    
 end 
 
 --current issue = "tiers not balanced. raw material need can get a little crazy"
---current project = "if name is in notUsedTier, skip completely. use goto? use if block?"
---on the docket = "fluids, rebalance tiers, re-evaluate items with iron gear wheels (from 15 to 25), add logic ot prevent items needing itself to be made like radar/splitter sitch
+--current project = "rebalance tiers, fluids (water) are too cheap?"
+--on the docket = "rebalance tiers, re-evaluate items with iron gear wheels (from 15 to 25), add logic ot prevent items needing itself to be made like radar/splitter sitch; i.e. make sure item required not in same tier as item being made"
